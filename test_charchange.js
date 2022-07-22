@@ -13,43 +13,59 @@ events.onread(0x80162F20, function(e) {
     //Code that runs after this won't be sequentail
 });
 
-function write_ghost_char(response){
-    const char_id = response.split('close')[1].trim();
-    console.log("Log from write_ghost_char: ");
-    console.log(char_id);
-    console.log(typeof(response));
-    mem.setblock(0x80162F20, "Hello");
+function write_ghost_char(kind, response){
+    if (kind == 'data') {
+        console.log("from data");
+    } else if (kind == 'end') {
+        console.log("from end");
+    } else {
+        console.log("? kind");
+    }
+    console.log(response);
     pj64.resume();
 }
 
 //Query server:
 function query_server(resource, fn){
     var client = new Socket();
+    
 
     client.connect(8064, 'localhost', function() {
         var response = '';
 
         client.on('data', function(data) {
             response += data;
-
+            //fn('data', response);
         });
         
         client.on('end', function() {
-            console.log("Log from inside client");
-            fn(response);
+            //console.log("Log from inside client");
+            fn('end', response);
         });
 
         //header
-        const message = [
-            "GET / HTTP/1.1",
-            "Host: localhost",
-            "Connection: close",
-            "\r\n"
-        ].join("\r\n");
+
 
         //client.end(message);
-        client.write(message);
+        //client.write(message);
         //client.end();
     });
+
+    const message = [
+        "GET / HTTP/1.1",
+        "Host: localhost",
+        //"Connection: close",
+        "\r\n"
+    ].join("\r\n");
+
+    const message2 = [
+        "GET / HTTP/1.1",
+        "Host: localhost",
+        "Connection: close",
+        "\r\n"
+    ].join("\r\n");
+
+    client.write(message);
+    client.end(message2);
     
 }
