@@ -1,11 +1,14 @@
 /*MK64 is the script which interfaces with the Mario Kart 64 (EU) ROM using the latest
 PJ64 emulator. It also interfaces with the "MK64 Watcher.exe" time and ghost manager*/
 console.log("Running MK64 script...");
+var writeFlag = false;
 
 //-----Events-----
 //Event to trigger when game checks if stage has saved ghost, trick game into thinking it does!
 events.onexec(0x80091F60, function(e) {
     debug.breakhere(true);
+
+    //Query server
 
     //TODO -- query server here? If ghost exists then continue with the t2 manipulation, and the rest of the functions
     //Thoughts -- should we register the other read-callbacks here? And de-register them at the end? That way we only proceed
