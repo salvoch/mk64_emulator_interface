@@ -12,10 +12,9 @@ console.log("Running MK64 script...");
 events.onexec(0x80091F60, function(e) {
     debug.breakhere(true);
     console.log("Character compare command triggered!");
-    var json_payload = {"Function": "check_for_ghost", "TrackID": 0};
-    var somevar = query_server(json_payload, set_write_flag);
-    console.log("here");
-    set_write_flag(somevar);
+    //QUERY TRACK ID HERE
+    var json_payload = {"Function": "check_for_ghost", "TrackID": 0}; //TODO - SEND THE TRACK ID HERE
+    query_server(json_payload, read_ext_file);
 });
 
 //Event when ghost char ID is read for rendering. Chars IDs are 0-8
@@ -25,11 +24,9 @@ events.onread(0x80162F20, function(e) {
     //Check to make sure we actually want to write a ghost
     if (WRITE_FLAG) {
         console.log("Character read triggered!");
-        var json_payload = {"Function": "ghost_character_load", "TrackID": 0};
-        query_server(json_payload, write_ghost_char);
-    } else {
-        debug.resume();
+        write_ghost_char();
     }
+    debug.resume();  
 });
 
 //Event when MIO0 data is about to be decompressed, we can inject compressed ghost data here
@@ -39,11 +36,9 @@ events.onexec(0x8000520C, function(e) {
     //Check to make sure we actually want to write a ghost
     if (WRITE_FLAG) {
         console.log("MIO0 read triggered!");
-        var json_payload = {"Function": "MIO0_load", "TrackID": 0};
-        query_server(json_payload, read_MIO0_file);
-    } else {
-        debug.resume();
+        write_MIO0_data();
     }
+    debug.resume();
 });
 
 //Event when ghost is attempted to be saved
@@ -52,16 +47,43 @@ events.onexec(0x8000520C, function(e) {
 //Function to write ghost, then resume emulator
 function write_ghost_char(data){
     //parse data response here
-    console.log("Hello2");
     mem.setblock(0x80162F20, data);
     debug.resume();
 }
 
+function id(arg){
+    return arg
+}
+
 //Function that determines if we are to inject ghost data or not!
-function set_write_flag(data){
+function read_ext_file(data){
     //parse data response here
-    //IF response === true or something, then:
+    
+    //ALSO, get the path from the data!
+    //var file = fs.open('A:\\Emulators\\NEWERVERSION\\Scripts\\ghost-dump.json', 'r');
+    //var jsonfile = 
+    var jsonfile = JSON.parse(fs.readfile('A:\\Emulators\\NEWERVERSION\\Scripts\\ghost-dump.json'));
+    var varbuf = new Buffer(jsonfile['ghost'], "base64");
+    mem.setblock(0x802DAB80, mio_stream);
+    //console.log(jsonfile)
+    //TEMP FOR TEST
     WRITE_FLAG = true;
+    CHARACTER_ID = jsonfile['header']['character'];
+    TRACK_ID = jsonfile['header']['track'];
+    MIO0_DATA = varbuf;
+
+    //console.log(WRITE_FLAG);
+    //console.log(CHARACTER_ID);
+    //console.log(TRACK_ID);
+    //console.log(varbuf);
+    //TODO - IF jsonfile['avaialble'] === true or something, then:
+    //WRITE_FLAG = true;
+    //CHARACTER_ID = jsonfile['char'];
+    //TRACK_ID = jsonfile['char'];
+    //MIO0_DATA = jsonfile['char'];
+
+    //TODO -> Convert character and track to their IDs
+    //TODO -> Un-encode the base64 from the mio
 
     //Call the function that tricks the game here??
     course_match();
@@ -71,16 +93,13 @@ function set_write_flag(data){
 }
 
 //Function that reads MIO0 file that C# writes
-function read_MIO0_file(data){
+function write_MIO0_data(data){
     //Validate that the file exists, and that data has a "DONE" flag or something
     //Open the file that has MIO0 data bytes
     //process file into bytes
-    var MIO0_byte_stream;
-    var jsonfile = fs.open('tempfiles/ghost-dump.json', )
 
     //Call function to actually inject ghost, send MIO0 data bytes
-    inject_MIO0(MIO0_byte_stream)
-
+    
     //Reset flag, since we are done with the injection process
     WRITE_FLAG = false;
 }
@@ -100,8 +119,6 @@ function query_server(payload, fn){
     
         client.on('end', function() {
             fn(response);
-
-            return(response);
         });
     
         const message = [
@@ -127,10 +144,11 @@ function course_match(){
 
 /*
 execbreak (compare is done)
-    reach out to server with --> (bool TrackID, string "read_ghost")
+    reach out to server with --> (bool TrackID, string "check_for_ghost")
     Server responds: {"available": <bool>, "path": <string>}
         available?: bool ->
             false (do nothing) *BREAK*
+                -> How do we prevent this from triggering two times???
             true (server has written the intermediate file)
                 -> trick the game
                 -> parse json, store varialbes globally
