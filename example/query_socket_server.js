@@ -15,9 +15,9 @@ client.connect(8064, 'localhost', function() {
 
     client.on('end', function() {
         //console.log(typeof(response));
-        //console.log(response);
+        console.log(response);
         console.log(response.length);
-        mem.setblock(0x80162F20, response);
+        //mem.setblock(0x80162F20, response);
 
         /*
         //Convert string to "object"
@@ -32,7 +32,7 @@ client.connect(8064, 'localhost', function() {
     });
 
     const message = [
-        "yoyoyo<EOF>"
+        '{"Test": "Hello"}<EOF>'
     ].join("\r\n");
 
     client.end(message);
