@@ -60,27 +60,15 @@ function read_ext_file(data){
     //parse data response here
     
     //ALSO, get the path from the data!
-    //var file = fs.open('A:\\Emulators\\NEWERVERSION\\Scripts\\ghost-dump.json', 'r');
-    //var jsonfile = 
-    var jsonfile = JSON.parse(fs.readfile('A:\\Emulators\\NEWERVERSION\\Scripts\\ghost-dump.json'));
-    var varbuf = new Buffer(jsonfile['ghost'], "base64");
-    mem.setblock(0x802DAB80, mio_stream);
-    //console.log(jsonfile)
-    //TEMP FOR TEST
-    WRITE_FLAG = true;
-    CHARACTER_ID = jsonfile['header']['character'];
-    TRACK_ID = jsonfile['header']['track'];
-    MIO0_DATA = varbuf;
-
-    //console.log(WRITE_FLAG);
-    //console.log(CHARACTER_ID);
-    //console.log(TRACK_ID);
-    //console.log(varbuf);
     //TODO - IF jsonfile['avaialble'] === true or something, then:
-    //WRITE_FLAG = true;
-    //CHARACTER_ID = jsonfile['char'];
-    //TRACK_ID = jsonfile['char'];
-    //MIO0_DATA = jsonfile['char'];
+    var jsonfile = JSON.parse(fs.readfile('A:\\Emulators\\NEWERVERSION\\Scripts\\tempfiles\\ghost-dump.json'));
+    WRITE_FLAG = true;
+    CHARACTER_ID = jsonfile['header']['character']; //TODO - convert this to ID
+    TRACK_ID = jsonfile['header']['track']; //TODO - convert this to ID
+    MIO0_DATA = Duktape.dec('base64', jsonfile['ghost']);
+
+    //If you prefer a full Uint8Array over a plain buffer, you can coerce the result as follows:
+    //var result = Object(Duktape.dec('base64', jsonfile['ghost']));
 
     //TODO -> Convert character and track to their IDs
     //TODO -> Un-encode the base64 from the mio
