@@ -7,7 +7,11 @@ var MIO0_DATA = null;
 
 console.log("Running MK64 script...");
 
-//-----Events-----
+//----TODOS:
+//Test when the onexec(0x80091F60 function triggers, if no ghosts are saved, it doesn't trigger! How do we account for this?
+//Do we have to close the socket each time? Should we? Look into adding it to the end of the query_socket function
+
+//-----Events----- Trigger when conditions on the emulator are met
 //Event to trigger when game checks if stage has saved ghost, trick game into thinking it does!
 events.onexec(0x80091F60, function(e) {
     debug.breakhere(true);
@@ -21,7 +25,7 @@ events.onexec(0x80091F60, function(e) {
 events.onread(0x80162F20, function(e) {
     debug.breakhere(true);
 
-    //Check to make sure we actually want to write a ghost
+    //Checks to make sure we actually want to write a ghost
     if (WRITE_FLAG) {
         console.log("Character read triggered!");
         write_ghost_char();
@@ -33,29 +37,45 @@ events.onread(0x80162F20, function(e) {
 events.onexec(0x8000520C, function(e) {
     debug.breakhere(true);
 
-    //Check to make sure we actually want to write a ghost
+    //Checks to make sure we actually want to write a ghost
     if (WRITE_FLAG) {
         console.log("MIO0 read triggered!");
-        write_MIO0_data();
+        inject_MIO0();
+        WRITE_FLAG = false;
     }
     debug.resume();
 });
 
-//Event when ghost is attempted to be saved
+//PLACEHOLDER - Event when ghost is attempted to be saved
 
-//-----Callbaks-----
-//Function to write ghost, then resume emulator
-function write_ghost_char(data){
-    //parse data response here
-    mem.setblock(0x80162F20, data);
-    debug.resume();
+//-----Functions-----
+
+//query the C# server, arg JSON payload, and callback function
+//callback fn with response, have to do this since query is async
+function query_server(payload, fn){
+    var client = new Socket();  
+    client.connect(8064, 'localhost', function() {
+        var response;
+    
+        client.on('data', function(data) {
+            response = data;
+        });
+    
+        client.on('end', function() {
+            fn(response);
+        });
+    
+        const message = [
+            JSON.stringify(payload)+"<EOF>"
+        ].join("\r\n");
+    
+        client.end(message);
+    });
 }
 
-function id(arg){
-    return arg
-}
-
-//Function that determines if we are to inject ghost data or not!
+//Used as a callback function after sever query
+//Read server response, if TRUE, read external file
+//if FALSE, continue
 function read_ext_file(data){
     //parse data response here
     
@@ -80,41 +100,11 @@ function read_ext_file(data){
     debug.resume();
 }
 
-//Function that reads MIO0 file that C# writes
-function write_MIO0_data(data){
-    //Validate that the file exists, and that data has a "DONE" flag or something
-    //Open the file that has MIO0 data bytes
-    //process file into bytes
-
-    //Call function to actually inject ghost, send MIO0 data bytes
-    
-    //Reset flag, since we are done with the injection process
-    WRITE_FLAG = false;
-}
-
-//-----Functions-----
-
-//query the C# server, arg JSON payload, and callback function
-//Calls fn with response
-function query_server(payload, fn){
-    var client = new Socket();  
-    client.connect(8064, 'localhost', function() {
-        var response;
-    
-        client.on('data', function(data) {
-            response = data;
-        });
-    
-        client.on('end', function() {
-            fn(response);
-        });
-    
-        const message = [
-            JSON.stringify(payload)+"<EOF>"
-        ].join("\r\n");
-    
-        client.end(message);
-    });
+//Function to set ghost character, then resume emulator
+function write_ghost_char(data){
+    //TODO - write logic to convert CHARACTER_ID to the necessary bytes format
+    //EITHER -- convert it to a 32bit value (ex: 00000004), or write 4 to 80162F24 (or w/e)
+    mem.setblock(0x80162F20, data);
 }
 
 //Funciton that injects compressed MIO0 data into memory
