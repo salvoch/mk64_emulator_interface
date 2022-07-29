@@ -14,6 +14,7 @@ console.log("Running MK64 script...");
     //- Maybe the writeflag variable should be 0,1,2 (0=false, 1=true, 2=special)
     //- if set to 2, that means we checked, it was false, but we do a check in onexec() and it will not  break again! And set to 0 again after??
 //Don't do server queries if it's not up, how do we do this?
+//Verify correct wording of character dk (DK, d.k.)?
 
 
 //-----Events----- Trigger when conditions on the emulator are met
@@ -55,7 +56,7 @@ events.onexec(0x8000520C, function(e) {
 
 //-----Functions-----
 
-//query the C# server, arg JSON payload, and callback function
+//query the C# server, with JSON payload arg, then run callback function
 //callback fn with response, have to do this since query is async
 function query_server(payload, fn){
     var client = new Socket();  
@@ -79,8 +80,8 @@ function query_server(payload, fn){
 }
 
 //Used as a callback function after sever query
-//Read server response, if TRUE, read external file
-//if FALSE, continue
+//Read server response, if TRUE (ie. ghost exists), read external file that was written to by server
+//if FALSE, then do nothing
 function read_ext_file(data){
     
     //Convert response to json, and file read into json
@@ -92,7 +93,7 @@ function read_ext_file(data){
         var filePath = respJson['path'];
         var fileJson = JSON.parse(fs.readfile(filePath));
         CHARACTER_ID = new Buffer([find_char_id(fileJson['header']['character'])]);
-        TRACK_ID = fileJson['header']['track']; //TODO - Do we need this as track id? Probably not? OR maybe for saving?
+        TRACK_ID = fileJson['header']['track']; //Do we need this as track id? Probably not? OR maybe for saving?
         MIO0_DATA = Duktape.dec('base64', fileJson['ghost']); //Decode base64 formatted input MIO0 Data
         WRITE_FLAG = true;
 
@@ -126,8 +127,6 @@ function find_char_id(character){
 
 //Function to set ghost character, then resume emulator
 function write_ghost_char(data){
-    //TODO - write logic to convert CHARACTER_ID to the necessary bytes format
-    //EITHER -- convert it to a 32bit value (ex: 00000004), or write 4 to 80162F24 instead of 80162F20 (or w/e)
     console.log("The char ID is:")
     console.log(data);
     mem.setblock(0x80162F23, data);
@@ -154,7 +153,7 @@ execbreak (compare is done)
             false (do nothing) *BREAK*
                 -> How do we prevent this from triggering two times???
             true (server has written the intermediate file)
-                -> trick the game
+                -> trick the game with course_match
                 -> parse json, store varialbes globally
                 -> continue emulator
                 -> *game runs checksum*
