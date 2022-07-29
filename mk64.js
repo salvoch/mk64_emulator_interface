@@ -13,6 +13,7 @@ console.log("Running MK64 script...");
 //Think of how to not trigger onexec() twice, since it'll query the server twice
     //- Maybe the writeflag variable should be 0,1,2 (0=false, 1=true, 2=special)
     //- if set to 2, that means we checked, it was false, but we do a check in onexec() and it will not  break again! And set to 0 again after??
+//Don't do server queries if it's not up, how do we do this?
 
 
 //-----Events----- Trigger when conditions on the emulator are met
@@ -33,7 +34,7 @@ events.onread(0x80162F20, function(e) {
     if (WRITE_FLAG) {
         console.log("Character read triggered!");
         write_ghost_char(CHARACTER_ID);
-        WRITE_FLAG = false; //Prep flag to read again
+        WRITE_FLAG = false; //Done loading, reset flag
     }
     debug.resume();  
 });
@@ -81,25 +82,26 @@ function query_server(payload, fn){
 //Read server response, if TRUE, read external file
 //if FALSE, continue
 function read_ext_file(data){
-    //parse data response here
     
-    //ALSO, get the path from the data!
-    //TODO - IF jsonfile['avaialble'] === true or something, then:
-    var jsonfile = JSON.parse(fs.readfile('A:\\Emulators\\NEWERVERSION\\Scripts\\tempfiles\\ghost-dump.json'));
-    WRITE_FLAG = true;
-    //CHARACTER_ID = jsonfile['header']['character']; //TODO - convert this to ID
-    CHARACTER_ID = new Buffer([0x05]);; //TODO -delete, convert the above to buffer
-    TRACK_ID = jsonfile['header']['track']; //TODO - convert this to ID
-    MIO0_DATA = Duktape.dec('base64', jsonfile['ghost']);
+    //Convert response to json, and file read into json
+    var respJson = JSON.parse(data);
 
-    //If you prefer a full Uint8Array over a plain buffer, you can coerce the result as follows:
-    //var result = Object(Duktape.dec('base64', jsonfile['ghost']));
+    //If the course is available for ghost injection
+    if (respJson['available']) {
+        console.log("Ghost available for this track.");
+        var filePath = respJson['path'];
+        var fileJson = JSON.parse(fs.readfile(filePath));
+        CHARACTER_ID = new Buffer([0x01]);; //TODO - CONVERT Char string to char ID from fileJson['header']['character'] (double check)
+        TRACK_ID = fileJson['header']['track']; //TODO - Do we need this as track id? Probably not? OR maybe for saving?
+        MIO0_DATA = Duktape.dec('base64', fileJson['ghost']); //Decode base64 formatted input MIO0 Data
+        WRITE_FLAG = true;
 
-    //TODO -> Convert character and track to their IDs
-    //TODO -> Un-encode the base64 from the mio
-
-    //Call the function that tricks the game here??
-    course_match();
+        //Call the function that tricks the game into thinking it has a ghost
+        course_match();
+    } else {
+        console.log("Ghost unavailable for this track.");
+        //TODO -Consider setting flag to 3rd option here!!
+    }
 
     //Resume game
     debug.resume();
