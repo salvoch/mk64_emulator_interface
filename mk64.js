@@ -9,7 +9,11 @@ console.log("Running MK64 script...");
 
 //----TODOS:
 //Test when the onexec(0x80091F60 function triggers, if no ghosts are saved, it doesn't trigger! How do we account for this?
-//Do we have to close the socket each time? Should we? Look into adding it to the end of the query_socket function
+//Do we have to close the socket each time? Should we? Look into adding it to the end of the query_socket function, not doing this!
+//Think of how to not trigger onexec() twice, since it'll query the server twice
+    //- Maybe the writeflag variable should be 0,1,2 (0=false, 1=true, 2=special)
+    //- if set to 2, that means we checked, it was false, but we do a check in onexec() and it will not  break again! And set to 0 again after??
+
 
 //-----Events----- Trigger when conditions on the emulator are met
 //Event to trigger when game checks if stage has saved ghost, trick game into thinking it does!
@@ -17,7 +21,7 @@ events.onexec(0x80091F60, function(e) {
     debug.breakhere(true);
     console.log("Character compare command triggered!");
     var trackId = cpu.gpr.s2;
-    var json_payload = {"Function": "check_for_ghost", "TrackID": trackId};
+    var json_payload = {"function": "check_for_ghost", "trackId": trackId};
     query_server(json_payload, read_ext_file);
 });
 
@@ -28,7 +32,8 @@ events.onread(0x80162F20, function(e) {
     //Checks to make sure we actually want to write a ghost
     if (WRITE_FLAG) {
         console.log("Character read triggered!");
-        write_ghost_char();
+        write_ghost_char(CHARACTER_ID);
+        WRITE_FLAG = false; //Prep flag to read again
     }
     debug.resume();  
 });
@@ -40,8 +45,7 @@ events.onexec(0x8000520C, function(e) {
     //Checks to make sure we actually want to write a ghost
     if (WRITE_FLAG) {
         console.log("MIO0 read triggered!");
-        inject_MIO0();
-        WRITE_FLAG = false;
+        inject_MIO0(MIO0_DATA);
     }
     debug.resume();
 });
@@ -83,7 +87,8 @@ function read_ext_file(data){
     //TODO - IF jsonfile['avaialble'] === true or something, then:
     var jsonfile = JSON.parse(fs.readfile('A:\\Emulators\\NEWERVERSION\\Scripts\\tempfiles\\ghost-dump.json'));
     WRITE_FLAG = true;
-    CHARACTER_ID = jsonfile['header']['character']; //TODO - convert this to ID
+    //CHARACTER_ID = jsonfile['header']['character']; //TODO - convert this to ID
+    CHARACTER_ID = new Buffer([0x05]);; //TODO -delete, convert the above to buffer
     TRACK_ID = jsonfile['header']['track']; //TODO - convert this to ID
     MIO0_DATA = Duktape.dec('base64', jsonfile['ghost']);
 
@@ -103,14 +108,14 @@ function read_ext_file(data){
 //Function to set ghost character, then resume emulator
 function write_ghost_char(data){
     //TODO - write logic to convert CHARACTER_ID to the necessary bytes format
-    //EITHER -- convert it to a 32bit value (ex: 00000004), or write 4 to 80162F24 (or w/e)
-    mem.setblock(0x80162F20, data);
+    //EITHER -- convert it to a 32bit value (ex: 00000004), or write 4 to 80162F24 instead of 80162F20 (or w/e)
+    mem.setblock(0x80162F23, data);
 }
 
 //Funciton that injects compressed MIO0 data into memory
 //Called before MIO0 will be processed for decompression
 function inject_MIO0(MIO0_stream){
-    mem.setblock(0x802DAB80, mio_stream);
+    mem.setblock(0x802DAB80, MIO0_stream);
 }
 
 //Function that tricks game into thinking the header course save file matches the selected course
