@@ -91,7 +91,7 @@ function read_ext_file(data){
         console.log("Ghost available for this track.");
         var filePath = respJson['path'];
         var fileJson = JSON.parse(fs.readfile(filePath));
-        CHARACTER_ID = new Buffer([0x01]);; //TODO - CONVERT Char string to char ID from fileJson['header']['character'] (double check)
+        CHARACTER_ID = new Buffer([find_char_id(fileJson['header']['character'])]);
         TRACK_ID = fileJson['header']['track']; //TODO - Do we need this as track id? Probably not? OR maybe for saving?
         MIO0_DATA = Duktape.dec('base64', fileJson['ghost']); //Decode base64 formatted input MIO0 Data
         WRITE_FLAG = true;
@@ -107,10 +107,29 @@ function read_ext_file(data){
     debug.resume();
 }
 
+//Return character ID for given character
+function find_char_id(character){
+
+    var chars = {
+        "mario": 0,
+        "luigi": 1,
+        "peach": 6,
+        "toad": 3,
+        "yoshi": 2,
+        "d.k.": 4,
+        "wario": 5,
+        "bowser": 7,
+    }; //TODO - verify d.k. is the right verbage
+
+    return chars[character.toLowerCase()]
+}
+
 //Function to set ghost character, then resume emulator
 function write_ghost_char(data){
     //TODO - write logic to convert CHARACTER_ID to the necessary bytes format
     //EITHER -- convert it to a 32bit value (ex: 00000004), or write 4 to 80162F24 instead of 80162F20 (or w/e)
+    console.log("The char ID is:")
+    console.log(data);
     mem.setblock(0x80162F23, data);
 }
 
