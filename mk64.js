@@ -12,8 +12,8 @@ console.log("Running MK64 script...");
 events.onexec(0x80091F60, function(e) {
     debug.breakhere(true);
     console.log("Character compare command triggered!");
-    //QUERY TRACK ID HERE
-    var json_payload = {"Function": "check_for_ghost", "TrackID": 0}; //TODO - SEND THE TRACK ID HERE
+    var trackId = cpu.gpr.s2;
+    var json_payload = {"Function": "check_for_ghost", "TrackID": trackId};
     query_server(json_payload, read_ext_file);
 });
 
