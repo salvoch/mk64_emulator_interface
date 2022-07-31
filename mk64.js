@@ -136,8 +136,6 @@ function find_char_id(character){
 
 //Function to set ghost character, then resume emulator
 function write_ghost_char(data){
-    console.log("The char ID is:")
-    console.log(data);
     mem.setblock(0x80162F23, data);
 }
 
